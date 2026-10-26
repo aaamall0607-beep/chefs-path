@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="음식 사진과 재료 힌트로 맞히는 세계 음식 퀴즈 게임">
+<title>요리사의 길</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: one phone-width game column — sticky score bar, a plate-shaped quiz stage, 3D "press" buttons like a kitchen ticket rail */
+:root{
+  --bg:#fbf5ea;        /* 아이보리 */
+  --surface:#ffffff;
+  --ink:#3a2418;       /* 짙은 갈색 */
+  --muted:#8b7160;
+  --line:#ecdfcc;
+  --red:#cf3b2c;       /* 고추장 빨강 */
+  --red-deep:#94241a;
+  --green:#3d9150;
+  --green-deep:#2a6738;
+  --gold:#e9a531;
+  --plate:#f3e6d2;
+  --plate-rim:#e4d1b4;
+  --chip:#fff4e3;
+  --display:'Jua','Noto Sans KR',system-ui,sans-serif;
+  --body:'Noto Sans KR',system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1d1612;--surface:#2a201a;--ink:#f6ecdf;--muted:#bfa794;--line:#3d3027;
+  --red:#e2513f;--red-deep:#9c2a1e;--green:#4fae63;--green-deep:#2e7340;--gold:#f0b44a;
+  --plate:#352920;--plate-rim:#4a3a2e;--chip:#33271f;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1d1612;--surface:#2a201a;--ink:#f6ecdf;--muted:#bfa794;--line:#3d3027;
+  --red:#e2513f;--red-deep:#9c2a1e;--green:#4fae63;--green-deep:#2e7340;--gold:#f0b44a;
+  --plate:#352920;--plate-rim:#4a3a2e;--chip:#33271f;color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.app{max-width:440px;margin:0 auto;padding-block:0 32px;display:flex;flex-direction:column;gap:18px}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+
+/* top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;gap:8px;padding-block:12px 8px}
+.logo{font-family:var(--display);font-size:22px;color:var(--red);letter-spacing:-.5px;margin-right:auto;display:flex;align-items:center;gap:6px}
+.logo small{font-family:var(--body);font-size:11px;color:var(--muted);font-weight:500}
+.pill{display:inline-flex;align-items:center;gap:4px;background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:3px 10px;font-family:var(--display);font-size:15px;font-variant-numeric:tabular-nums}
+.icon-btn{width:36px;height:36px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-size:16px}
+
+/* 3D press buttons */
+.btn{font-family:var(--display);font-size:20px;border-radius:16px;padding:14px 18px;width:100%;
+  background:var(--red);color:#fff;box-shadow:0 5px 0 var(--red-deep);transition:transform .08s, box-shadow .08s}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--red-deep)}
+.btn.ghost{background:var(--surface);color:var(--ink);border:2px solid var(--line);box-shadow:0 4px 0 var(--line);font-size:16px;padding:10px 14px}
+.btn.ghost:active{box-shadow:0 0 0 var(--line)}
+.btn.green{background:var(--green);box-shadow:0 5px 0 var(--green-deep)}
+.btn.green:active{box-shadow:0 1px 0 var(--green-deep)}
+
+/* hero */
+.hero h1{font-family:var(--display);font-weight:400;font-size:clamp(30px,8.5vw,38px);line-height:1.15;margin:4px 0 4px;text-wrap:balance}
+.hero h1 em{font-style:normal;color:var(--red)}
+.hero p{margin:0;color:var(--muted)}
+
+/* plate stage */
+.stage{position:relative;aspect-ratio:1/1;max-width:100%;border-radius:50%;background:radial-gradient(circle at 50% 45%,var(--surface) 0 56%,var(--plate) 57% 66%,var(--plate-rim) 67% 70%,var(--plate) 71%);
+  overflow:hidden;display:grid;place-items:center;box-shadow:0 10px 0 var(--line)}
+.stage.small{width:min(240px,70vw);margin:0 auto}
+.food{font-size:min(44vw,190px);line-height:1;transition:transform .55s cubic-bezier(.2,.8,.2,1),filter .55s;user-select:none}
+.qmark{position:absolute;right:10%;top:8%;width:56px;height:56px;border-radius:50%;background:var(--gold);color:#3a2418;font-family:var(--display);font-size:34px;display:grid;place-items:center;box-shadow:0 4px 0 #b47a17;transform:rotate(10deg)}
+.zoomtag{position:absolute;left:50%;bottom:9%;transform:translateX(-50%);background:var(--ink);color:var(--bg);font-family:var(--display);font-size:14px;padding:2px 10px;border-radius:999px;font-variant-numeric:tabular-nums}
+
+/* options */
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:12px 8px;font-family:var(--display);font-size:18px;box-shadow:0 4px 0 var(--line);transition:transform .08s}
+.opt:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+.opt.wrong{background:transparent;color:var(--muted);text-decoration:line-through;box-shadow:none;border-style:dashed;pointer-events:none}
+.opt.right{background:var(--green);border-color:var(--green-deep);color:#fff;box-shadow:0 4px 0 var(--green-deep)}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
+
+.meta{display:flex;justify-content:center;gap:10px;color:var(--muted);font-size:13px}
+.meta b{color:var(--ink)}
+
+/* cards */
+.card{background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:14px 16px}
+.today{display:flex;align-items:center;gap:12px}
+.today .big{font-size:40px}
+.today h3{margin:0;font-family:var(--display);font-weight:400;font-size:19px}
+.today p{margin:0;color:var(--muted);font-size:13px}
+.flame{margin-left:auto;text-align:center;font-family:var(--display);color:var(--red)}
+.flame span{display:block;font-size:26px;line-height:1}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mode{text-align:left;background:var(--chip);border:2px solid var(--line);border-radius:16px;padding:12px;box-shadow:0 4px 0 var(--line)}
+.mode:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+.mode b{display:block;font-family:var(--display);font-weight:400;font-size:17px}
+.mode small{color:var(--muted);font-size:12px}
+.sub{font-size:12px;color:var(--muted);text-align:center;margin-top:-6px}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-size:12px;padding:4px 10px;border-radius:999px;background:var(--chip);border:1.5px solid var(--line)}
+.badge.off{opacity:.45}
+.section-label{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:6px 0 -8px}
+
+/* game */
+.progress{display:flex;gap:6px}
+.progress i{flex:1;height:10px;border-radius:99px;background:var(--line)}
+.progress i.done{background:var(--green)}
+.progress i.now{background:var(--gold)}
+.qhead{display:flex;justify-content:space-between;align-items:center}
+.qhead h2{margin:0;font-family:var(--display);font-weight:400;font-size:22px}
+.worth{font-family:var(--display);font-size:18px;color:var(--red);font-variant-numeric:tabular-nums}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chip{display:flex;align-items:center;gap:8px;background:var(--chip);border:2px solid var(--line);border-radius:14px;padding:12px;font-family:var(--display);font-size:18px;min-height:58px}
+.chip .e{font-size:26px}
+.chip.hidden{justify-content:center;color:var(--muted);border-style:dashed;background:transparent}
+.chip.pop{animation:pop .35s}
+@keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+.hintbtn{font-size:14px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;align-self:center;padding:4px}
+
+/* answer sheet */
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:3px solid var(--line);border-radius:22px 22px 0 0;
+  padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.sheet.show{transform:none}
+.sheet-in{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.verdict{font-family:var(--display);font-size:26px;display:flex;align-items:baseline;gap:8px}
+.verdict.ok{color:var(--green)} .verdict.no{color:var(--red)}
+.verdict .pts{margin-left:auto;font-size:22px;font-variant-numeric:tabular-nums}
+.recipe{display:flex;gap:12px;align-items:center;background:var(--chip);border-radius:14px;padding:10px 12px}
+.recipe .e{font-size:34px}
+.recipe b{font-family:var(--display);font-weight:400;font-size:16px;display:block}
+.recipe small{color:var(--muted);font-size:12px}
+.row{display:flex;gap:10px}
+.row .btn.ghost{flex:1}
+
+/* result */
+.result{text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center}
+.score-big{font-family:var(--display);font-size:64px;line-height:1;color:var(--red);font-variant-numeric:tabular-nums}
+.rank{font-family:var(--display);font-size:24px}
+.recap{width:100%;display:flex;flex-direction:column;gap:8px}
+.recap div{display:flex;align-items:center;gap:10px;background:var(--surface);border:2px solid var(--line);border-radius:12px;padding:8px 12px;text-align:left}
+.recap span:last-child{margin-left:auto;font-family:var(--display);font-variant-numeric:tabular-nums}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:30;background:rgb(0 0 0 / .45);display:grid;place-items:end center;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
+.modal .card{max-width:440px;width:100%;margin-bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
+.modal h3{margin:0;font-family:var(--display);font-weight:400;font-size:22px}
+.modal ol{margin:0;padding-left:20px}
+.foot{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.6}
+
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}
+.confetti i{position:absolute;top:-12px;width:9px;height:14px;border-radius:2px;animation:fall 1.2s ease-in forwards}
+@keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:.8}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="app" id="app"></div>
+<div class="sheet" id="sheet" role="dialog" aria-live="polite"><div class="sheet-in" id="sheetIn"></div></div>
+
+<script>
+const FOODS=[
+ {name:'라면',country:'한국',e:'🍜',focus:'40% 30%',ing:[['🍜','꼬불꼬불 면'],['💧','끓는 물'],['🧂','분말 스프'],['🥚','계란']],r:{t:'계란 반숙 라면',time:'5분',likes:12930}},
+ {name:'김치찌개',country:'한국',e:'🍲',focus:'50% 35%',ing:[['🥬','신 김치'],['🥓','돼지고기'],['⬜','두부'],['🌿','대파']],r:{t:'돼지고기 김치찌개',time:'25분',likes:8420}},
+ {name:'카레라이스',country:'일본',e:'🍛',focus:'60% 40%',ing:[['🥔','감자'],['🥕','당근'],['🧅','양파'],['🍚','흰 쌀밥']],r:{t:'일본식 고형 카레',time:'40분',likes:6210}},
+ {name:'만두',country:'중국',e:'🥟',focus:'45% 55%',ing:[['🥩','다진 고기'],['🥬','배추'],['🧄','마늘'],['⚪','만두피']],r:{t:'육즙 군만두',time:'35분',likes:5480}},
+ {name:'초밥',country:'일본',e:'🍣',focus:'50% 40%',ing:[['🐟','생선회'],['🍚','초밥용 밥'],['🟢','와사비'],['🫗','간장']],r:{t:'연어 초밥',time:'30분',likes:7390}},
+ {name:'스파게티',country:'이탈리아',e:'🍝',focus:'55% 45%',ing:[['🍅','토마토'],['🧄','마늘'],['🫒','올리브유'],['〰️','파스타 면']],r:{t:'토마토 스파게티',time:'20분',likes:9010}},
+ {name:'피자',country:'이탈리아',e:'🍕',focus:'40% 60%',ing:[['🧀','모차렐라'],['🍅','토마토소스'],['🍄','버섯'],['🫓','도우']],r:{t:'홈메이드 마르게리타',time:'50분',likes:6640}},
+ {name:'새우튀김',country:'일본',e:'🍤',focus:'35% 45%',ing:[['🦐','새우'],['🥚','계란'],['🌾','튀김가루'],['🫕','기름']],r:{t:'바삭한 에비텐',time:'25분',likes:4120}},
+ {name:'타코',country:'멕시코',e:'🌮',focus:'50% 55%',ing:[['🌽','옥수수 토르티야'],['🥩','양념 고기'],['🥑','아보카도'],['🍋','라임']],r:{t:'소고기 타코',time:'30분',likes:3870}},
+ {name:'팥빙수',country:'한국',e:'🍧',focus:'50% 30%',ing:[['🧊','곱게 간 얼음'],['🥛','연유'],['🫘','단팥'],['🍓','딸기']],r:{t:'옛날 팥빙수',time:'10분',likes:7020}},
+ {name:'햄버거',country:'미국',e:'🍔',focus:'50% 45%',ing:[['🥩','소고기 패티'],['🥬','양상추'],['🍅','토마토'],['🧀','체다 치즈']],r:{t:'수제 치즈버거',time:'30분',likes:8890}},
+ {name:'어묵꼬치',country:'한국',e:'🍢',focus:'50% 40%',ing:[['🐟','생선살'],['🥢','꼬치'],['⚪','무'],['🌶️','청양고추']],r:{t:'포장마차 어묵탕',time:'20분',likes:3310}},
+];
+const PTS=[100,80,60,40], ZOOM=[[5,7],[3,3.5],[1.8,1.2],[1,0]], ZLABEL=['500%','300%','180%','전체'];
+const RANKS=[[260,'오늘의 셰프 👨‍🍳'],[180,'수셰프'],[100,'라인쿡'],[0,'견습생']];
+const KEY='chefs-path-v02';
+const $=s=>document.querySelector(s), app=$('#app'), sheet=$('#sheet'), sheetIn=$('#sheetIn');
+
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return{}}}
+function save(s){try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}}
+let store=Object.assign({streak:0,best:0,last:'',saved:[],badges:[],sound:true},load());
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()};
+const dayIndex=()=>{const d=new Date();return (d.getFullYear()*372+d.getMonth()*31+d.getDate())%FOODS.length};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+
+/* sound (starts only after a tap) */
+let actx=null;
+function beep(ok){ if(!store.sound) return; try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+  const notes=ok?[660,880,1175]:[220,165]; notes.forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain();o.type=ok?'triangle':'square';o.frequency.value=f;
+  g.gain.setValueAtTime(.0001,actx.currentTime+i*.09);g.gain.exponentialRampToValueAtTime(.12,actx.currentTime+i*.09+.02);g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+i*.09+.18);
+  o.connect(g).connect(actx.destination);o.start(actx.currentTime+i*.09);o.stop(actx.currentTime+i*.09+.2)})}catch(e){} }
+function confetti(){ if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const c=document.createElement('div');c.className='confetti';const cols=['#cf3b2c','#e9a531','#3d9150','#f3e6d2','#94241a'];
+  for(let i=0;i<36;i++){const p=document.createElement('i');p.style.left=Math.random()*100+'%';p.style.background=cols[i%5];p.style.animationDelay=Math.random()*.3+'s';p.style.transform=`rotate(${Math.random()*180}deg)`;c.appendChild(p)}
+  document.body.appendChild(c);setTimeout(()=>c.remove(),1700)}
+
+/* state */
+let game=null; // {qs:[{food,mode,opts,level,wrong:[],done,pts}], i, total}
+function newGame(modeSeq,firstFood){
+  const pool=shuffle(FOODS.filter(f=>f!==firstFood));
+  const foods=firstFood?[firstFood,pool[0],pool[1]]:pool.slice(0,3);
+  game={i:0,total:0,qs:foods.map((f,k)=>({food:f,mode:modeSeq[k%modeSeq.length],opts:shuffle([f,...shuffle(FOODS.filter(x=>x!==f)).slice(0,3)]).map(x=>x.name),level:0,wrong:[],done:false,pts:0}))};
+}
+
+function bar(){
+  return `<div class="bar"><div class="logo">🍳 요리사의 길 <small>v0.2 시안</small></div>
+  <span class="pill" title="연속 기록">🔥 ${store.streak}</span>
+  ${game?`<span class="pill" title="이번 판 점수">⭐ ${game.total}</span>`:''}
+  <button class="icon-btn" id="snd" aria-label="효과음 ${store.sound?'끄기':'켜기'}">${store.sound?'🔊':'🔈'}</button></div>`;
+}
+function bindBar(){ $('#snd').onclick=()=>{store.sound=!store.sound;save(store);render()} }
+
+/* HOME — 설명보다 먼저 바로 풀 수 있는 문제 */
+let preview=null;
+function home(){
+  game=null; hideSheet();
+  const f=FOODS[dayIndex()];
+  preview=preview&&preview.food===f?preview:{food:f,opts:shuffle([f,...shuffle(FOODS.filter(x=>x!==f)).slice(0,3)]).map(x=>x.name)};
+  const doneToday=store.last===today();
+  const allBadges=[['first','첫 도전'],['perfect','300점 만점'],['streak3','3일 연속'],['collector','레시피 3개 저장']];
+  app.innerHTML=bar()+`
+  <section class="hero"><h1>이 음식, <em>맞힐 수</em> 있나요?</h1><p>확대된 사진과 재료 힌트로 맞히는 세계 음식 퀴즈</p></section>
+  <div class="stage small" aria-label="확대된 오늘의 음식 사진"><div class="food" id="pf" style="transform-origin:${f.focus};transform:scale(${ZOOM[0][0]});filter:blur(${ZOOM[0][1]}px)">${f.e}</div><div class="qmark">?</div><div class="zoomtag">500% 확대 · 100점</div></div>
+  <div class="opts" id="popts">${preview.opts.map(n=>`<button class="opt" data-n="${n}">${n}</button>`).join('')}</div>
+  <p class="sub">보기를 누르면 바로 1번 문제로 시작돼요</p>
+  <button class="btn" id="go">▶ 3문제 도전하기</button>
+  <p class="sub">로그인 없이 · 시간 제한 없이 · 한 판 1분</p>
+  <div class="section-label">오늘의 도전</div>
+  <div class="card today"><div class="big">${doneToday?'✅':'🎯'}</div><div><h3>${doneToday?'오늘 도전 완료!':'오늘의 3문제'}</h3><p>${doneToday?'내일 다시 오면 연속 기록이 이어져요':'끝내면 🔥 연속 기록 +1'}</p></div>
+  <div class="flame"><span>🔥</span>${store.streak}일</div></div>
+  <div class="section-label">게임 골라 하기</div>
+  <div class="modes"><button class="mode" data-m="photo"><b>📸 사진 확대</b><small>500% → 전체 사진</small></button>
+  <button class="mode" data-m="ing"><b>🥕 재료 힌트</b><small>재료가 하나씩 공개</small></button></div>
+  <div class="section-label">배지</div>
+  <div class="badges">${allBadges.map(([k,t])=>`<span class="badge ${store.badges.includes(k)?'':'off'}">${store.badges.includes(k)?'🏅':'🔒'} ${t}</span>`).join('')}</div>
+  <p class="foot">프로토타입 시안 · 음식 그림은 정식 버전에서 실제 음식 사진으로 교체됩니다.<br>레시피 작성자·좋아요 수는 화면 예시입니다.</p>`;
+  bindBar();
+  $('#go').onclick=()=>{newGame(['photo','ing','photo']);render()};
+  app.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{newGame([b.dataset.m]);render()});
+  app.querySelectorAll('#popts .opt').forEach(b=>b.onclick=()=>{newGame(['photo','ing','photo'],f);game.qs[0].opts=preview.opts;render();answer(b.dataset.n)});
+}
+
+/* GAME */
+function play(){
+  const q=game.qs[game.i], f=q.food, L=q.level;
+  const prog=game.qs.map((x,k)=>`<i class="${k<game.i||x.done&&k===game.i?'done':k===game.i?'now':''}"></i>`).join('');
+  let visual='';
+  if(q.mode==='photo'){
+    const z=q.done?ZOOM[3]:ZOOM[L];
+    visual=`<div class="stage" aria-label="음식 사진 ${q.done?'전체':ZLABEL[L]+' 확대'}"><div class="food" style="transform-origin:${f.focus};transform:scale(${z[0]});filter:blur(${z[1]}px)">${f.e}</div>${q.done?'':'<div class="qmark">?</div>'}<div class="zoomtag">${q.done?'전체 사진':ZLABEL[L]+' 확대'}</div></div>`;
+  }else{
+    visual=`<div class="chips">${f.ing.map((g,k)=>k<=L||q.done?`<div class="chip ${k===L&&!q.done?'pop':''}"><span class="e">${g[0]}</span>${g[1]}</div>`:`<div class="chip hidden">힌트 ${k+1}</div>`).join('')}</div>`;
+  }
+  app.innerHTML=bar()+`
+  <div class="progress" aria-label="${game.i+1}/3 문제">${prog}</div>
+  <div class="qhead"><h2>${q.mode==='photo'?'📸 무슨 음식일까요?':'🥕 이 재료로 만든 음식은?'}</h2><span class="worth">${q.done?'':PTS[L]+'점'}</span></div>
+  ${visual}
+  <div class="opts" id="opts">${q.opts.map(n=>`<button class="opt ${q.wrong.includes(n)?'wrong':''} ${q.done&&n===f.name?'right':''}" data-n="${n}" ${q.done?'disabled':''}>${n}</button>`).join('')}</div>
+  ${q.done||L>=3?'':`<button class="hintbtn" id="hint">${q.mode==='photo'?'조금 더 보여주세요':'다음 재료 보기'} (−20점)</button>`}
+  <div class="meta"><span>${game.i+1} / 3 문제</span><span>국가 <b>${f.country}</b></span><span>오답 ${q.wrong.length}회</span></div>
+  <button class="btn ghost" id="quit">그만하고 홈으로</button>`;
+  bindBar();
+  app.querySelectorAll('#opts .opt').forEach(b=>b.onclick=()=>answer(b.dataset.n,b));
+  const h=$('#hint'); if(h) h.onclick=()=>{q.level=Math.min(3,q.level+1);render()};
+  $('#quit').onclick=()=>{preview=null;home()};
+}
+
+function answer(n,btn){
+  const q=game.qs[game.i], f=q.food;
+  if(q.done) return;
+  if(n===f.name){ q.done=true; q.pts=PTS[q.level]; game.total+=q.pts; beep(true); confetti(); render(); showSheet(true); return; }
+  q.wrong.push(n); beep(false);
+  if(q.level>=3){ q.done=true; q.pts=0; render(); showSheet(false); return; }
+  q.level++; render();
+  const again=app.querySelector(`#opts .opt[data-n="${n}"]`); if(again){again.classList.add('shake')}
+}
+
+function showSheet(ok){
+  const q=game.qs[game.i], f=q.food, saved=store.saved.includes(f.name), last=game.i===2;
+  sheetIn.innerHTML=`<div class="verdict ${ok?'ok':'no'}">${ok?'정답! 🎉':'아쉬워요'} <span>${ok?f.name:'정답은 '+f.name}</span><span class="pts">+${q.pts}점</span></div>
+  <div class="recipe"><span class="e">${f.e}</span><div><b>🏆 인기 1위 · ${f.r.t}</b><small>예시셰프 · ❤️ ${f.r.likes.toLocaleString('ko-KR')} · ${f.r.time}</small></div></div>
+  <button class="btn ${ok?'green':''}" id="next">${last?'결과 보기':'다음 문제 ▶'}</button>
+  <div class="row"><button class="btn ghost" id="rcp">📖 레시피</button><button class="btn ghost" id="sv">${saved?'💾 저장됨':'🤍 저장'}</button></div>`;
+  sheet.classList.add('show');
+  $('#next').onclick=()=>{hideSheet(); if(last){finish()}else{game.i++;render()}};
+  $('#rcp').onclick=()=>recipe(f);
+  $('#sv').onclick=()=>{ if(!store.saved.includes(f.name)){store.saved.push(f.name); if(store.saved.length>=3&&!store.badges.includes('collector'))store.badges.push('collector'); save(store);} $('#sv').textContent='💾 저장됨'};
+  setTimeout(()=>$('#next').focus(),50);
+}
+function hideSheet(){sheet.classList.remove('show')}
+
+function recipe(f){
+  const m=document.createElement('div');m.className='modal';
+  m.innerHTML=`<div class="card" role="dialog" aria-label="${f.r.t} 레시피"><h3>${f.e} ${f.r.t}</h3><small style="color:var(--muted)">${f.country} · ${f.r.time} · 예시 레시피</small>
+  <b>재료</b><div class="badges">${f.ing.map(g=>`<span class="badge">${g[0]} ${g[1]}</span>`).join('')}</div>
+  <b>순서 (예시)</b><ol><li>${f.ing[0][1]}을(를) 손질해 준비해요.</li><li>${f.ing[1][1]}, ${f.ing[2][1]}과(와) 함께 조리해요.</li><li>${f.ing[3][1]}을(를) 더해 마무리해요.</li></ol>
+  <p class="foot" style="text-align:left">정식 버전에서는 사용자가 올린 레시피 중 좋아요 1위가 여기에 표시돼요.</p>
+  <button class="btn ghost" id="close">닫기</button></div>`;
+  document.body.appendChild(m);
+  const close=()=>m.remove(); m.querySelector('#close').onclick=close; m.onclick=e=>{if(e.target===m)close()}; m.querySelector('#close').focus();
+}
+
+function finish(){
+  const t=today(), first=store.last!==t;
+  if(first){ const y=new Date();y.setDate(y.getDate()-1); const yk=y.getFullYear()+'-'+(y.getMonth()+1)+'-'+y.getDate();
+    store.streak=store.last===yk?store.streak+1:1; store.last=t; }
+  store.best=Math.max(store.best,game.total);
+  const add=k=>{if(!store.badges.includes(k))store.badges.push(k)};
+  add('first'); if(game.total===300)add('perfect'); if(store.streak>=3)add('streak3'); save(store);
+  const rank=RANKS.find(r=>game.total>=r[0])[1];
+  app.innerHTML=bar()+`<div class="result">
+   <div style="font-size:56px">${game.total>=180?'🏆':'🍳'}</div>
+   <div class="score-big">${game.total}<span style="font-size:24px;color:var(--muted)"> / 300</span></div>
+   <div class="rank">오늘의 등급: ${rank}</div>
+   ${first?`<div class="pill">🔥 연속 기록 ${store.streak}일째!</div>`:`<div class="pill">최고 기록 ${store.best}점</div>`}
+   <div class="recap">${game.qs.map(q=>`<div><span style="font-size:24px">${q.food.e}</span><span>${q.food.name} <small style="color:var(--muted)">${q.mode==='photo'?'사진':'재료'}</small></span><span>${q.pts?'+'+q.pts:'0'}점</span></div>`).join('')}</div>
+   <button class="btn" id="again">한 판 더 ▶</button>
+   <button class="btn ghost" id="home">홈으로</button></div>`;
+  bindBar();
+  if(game.total>=180) confetti();
+  $('#again').onclick=()=>{newGame(['photo','ing','photo']);render()};
+  $('#home').onclick=()=>{preview=null;home()};
+}
+
+function render(){ if(!game) return home(); play(); }
+render();
+</script>
+
+</body>
+</html>
